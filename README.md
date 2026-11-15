@@ -13,7 +13,7 @@ A fast, native macOS application designed to clean caches, uninstall apps with a
 
 <br/>
 
-<img src="docs/overview.png" width="880" alt="Widmut Overview and System Monitor" />
+<img src="docs/widmut-preview.png" width="880" alt="Widmut Overview and System Monitor" />
 
 </div>
 
