@@ -1,7 +1,6 @@
-# Wildmutt: agent instructions
+# Widmut: agent instructions
 
-Wildmutt is a native SwiftUI macOS app that gives a premium GUI to the Mole cleaner CLI
-(github.com/tw93/Mole, GPL-3.0). Repo: github.com/khan-umirzakoff/Mole-GUI, public, GPL-3.0.
+Widmut is a native SwiftUI macOS app that gives a premium GUI Mac cleaner. Repo: github.com/VedasarathiV/widmut, public, GPL-3.0.
 Everything about this project is written here or in this repository, never in other projects'
 folders or memories.
 

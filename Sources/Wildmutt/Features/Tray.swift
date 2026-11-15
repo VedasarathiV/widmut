@@ -186,7 +186,7 @@ private struct TrayRow: View {
                 Button("Clean", action: clean)
                     .buttonStyle(PillButtonStyle(kind: .secondary, compact: true))
                     .accessibilityLabel("Clean \(title.lowercased()), \(value)")
-                    .accessibilityHint("Asks before Mole cleans")
+                    .accessibilityHint("Asks before Widmut cleans")
             }
         }
         .padding(.horizontal, 10)

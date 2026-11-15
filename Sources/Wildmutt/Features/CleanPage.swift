@@ -25,7 +25,7 @@ struct CleanPage: View {
                 Toggle(isOn: $includeSystem) {
                     VStack(alignment: .leading, spacing: 2) {
                         Text("Include system caches").font(.system(size: 13, weight: .medium))
-                        Text("Mole asks for your administrator password while cleaning").caption()
+                        Text("Widmut asks for your administrator password while cleaning").caption()
                     }
                 }
                 .toggleStyle(.switch)
@@ -78,7 +78,7 @@ struct CleanPage: View {
     }
 
     private var detail: String {
-        guard let report = scan.report else { return "Mole previews everything first. Nothing is removed until you press Clean." }
+        guard let report = scan.report else { return "Widmut previews everything first. Nothing is removed until you press Clean." }
         let tally = report.tally.map { $0 + ". " } ?? ""
         return tally + "Files listed twice below are counted once."
     }
@@ -90,7 +90,7 @@ struct CleanPage: View {
     private func askToClean() {
         let size = (scan.report?.total.bytesText ?? "") + (scan.report?.potentialIsLowerBound == true ? "+" : "")
         confirm = .init(title: "Clean \(size)?",
-                        message: "Mole removes the caches and logs listed here. Protected paths are skipped."
+                        message: "Widmut removes the caches and logs listed here. Protected paths are skipped."
                             + (includeSystem ? " System caches need your administrator password." : ""),
                         button: "Clean") {
             model.run("Cleaning your Mac", ["clean"], plan: scan.report?.total,
@@ -101,7 +101,7 @@ struct CleanPage: View {
     }
 }
 
-/// "Rescan" that turns into "Stop" while Mole is scanning. ⌘R either way.
+/// "Rescan" that turns into "Stop" while Widmut is scanning. ⌘R either way.
 struct ScanButton: View {
     let scanning: Bool
     var title = "Rescan"
@@ -139,7 +139,7 @@ struct OptimizePage: View {
                         VStack(alignment: .leading, spacing: 12) {
                             Group {
                                 if scan.error != nil, !scan.scanning {
-                                    Label("Mole could not finish", systemImage: "exclamationmark.triangle.fill")
+                                    Label("Widmut could not finish", systemImage: "exclamationmark.triangle.fill")
                                         .font(.system(size: 24, weight: .semibold)).symbolRenderingMode(.multicolor)
                                 } else if scan.report == nil {
                                     Text(scan.scanning ? "Checking…" : "Not checked yet")
@@ -196,10 +196,10 @@ struct OptimizePage: View {
     }
 
     private var footnote: String {
-        if scan.scanning { return scan.section.isEmpty ? "Mole is looking at your system…" : "Checking \(scan.section)" }
+        if scan.scanning { return scan.section.isEmpty ? "Widmut is looking at your system…" : "Checking \(scan.section)" }
         if let error = scan.error { return error }
         if let tally = scan.report?.summary.first(where: { $0.contains("unchanged") }) { return tally.replacingOccurrences(of: " | ", with: " · ") }
-        return "Finder, DNS, Spotlight, preferences and more. Mole asks before anything needs your password."
+        return "Finder, DNS, Spotlight, preferences and more. Widmut asks before anything needs your password."
     }
 
     /// Steps Mole would run, from its "Would apply N optimizations" summary.

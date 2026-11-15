@@ -150,7 +150,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
         guard let session = MainActor.assumeIsolated({ model?.session }), !session.isFinished, session.runsMole else { return .terminateNow }
         let alert = NSAlert()
-        alert.messageText = "Mole is still working"
+        alert.messageText = "Widmut is still working"
         alert.informativeText = "“\(session.title)” has not finished. Quitting stops it where it is."
         alert.addButton(withTitle: "Keep Working")
         alert.addButton(withTitle: "Stop and Quit")

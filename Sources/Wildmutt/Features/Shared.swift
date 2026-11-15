@@ -256,7 +256,7 @@ struct HeroCard<Actions: View>: View {
 
     @ViewBuilder private var value: some View {
         if let error, !scanning {
-            Label("Mole could not finish", systemImage: "exclamationmark.triangle.fill")
+            Label("Widmut could not finish", systemImage: "exclamationmark.triangle.fill")
                 .font(.system(size: 24, weight: .semibold))
                 .symbolRenderingMode(.multicolor)
                 .help(error)
@@ -271,7 +271,7 @@ struct HeroCard<Actions: View>: View {
 
     @ViewBuilder private var footnote: some View {
         if scanning {
-            Text(progress.isEmpty ? "Mole is starting…" : progress)
+            Text(progress.isEmpty ? "Widmut is starting…" : progress)
                 .caption().lineLimit(1).truncationMode(.middle)
                 .contentTransition(.opacity)
                 .animation(Motion.quick, value: progress)
@@ -368,7 +368,7 @@ struct ReportRow: View {
             switch item.kind {
             case .action:
                 if let b = item.bytes, b > 0 { Text(b.bytesText).font(.system(size: 12.5)).monospacedDigit() }
-            case .info: Tag(text: "Manual", color: Glow.blue.color).help("Mole lists this but leaves it to you")
+            case .info: Tag(text: "Manual", color: Glow.blue.color).help("Widmut lists this but leaves it to you")
             case .skipped where needsDiskAccess:
                 Button("Open Settings") { NSWorkspace.shared.open(Self.fullDiskAccess) }
                     .buttonStyle(.link).font(.system(size: 12, weight: .medium))

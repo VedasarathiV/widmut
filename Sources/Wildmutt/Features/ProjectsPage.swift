@@ -73,7 +73,7 @@ struct ProjectsPage: View {
         }
         .bottomBar(!selected.isEmpty && !scan.scanning) {
             SelectionBar(glow: .blue, title: "\(selected.count) folder\(selected.count == 1 ? "" : "s") · \(selectedBytes.bytesText)",
-                         subtitle: everythingSelected ? "Mole removes them; a reinstall or build brings them back."
+                         subtitle: everythingSelected ? "Widmut removes them; a reinstall or build brings them back."
                                                       : "They go to the Trash; a reinstall or build brings them back.",
                          clear: { selected.removeAll() }) {
                 Button("Remove selected") { askToRemove() }.buttonStyle(.pill).disabled(removing)
@@ -156,7 +156,7 @@ struct ProjectsPage: View {
     private func askToRemove() {
         if everythingSelected {
             confirm = .init(title: "Remove all \(selected.count) build folders?",
-                            message: "\(selectedBytes.bytesText). Mole deletes them with its own safety checks and shows its final count before it starts.",
+                            message: "\(selectedBytes.bytesText). Widmut deletes them with its own safety checks and shows its final count before it starts.",
                             button: "Continue") {
                 // Mole's selector opens with exactly these folders ticked (recent ones stay off);
                 // Enter accepts it, then Mole asks for the final confirmation in the sheet.

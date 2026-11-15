@@ -5,6 +5,8 @@ set -euo pipefail
 
 cd "$(dirname "$0")/.."
 OUT="${1:-build}"
+mkdir -p "$OUT"
+touch "$OUT/.metadata_never_index"
 APP="$OUT/Widmut.app"
 VERSION="$(cat VERSION 2>/dev/null || echo 0.1.0)"
 MOLE_VERSION="$(cat Vendor/mole/VERSION)"
@@ -51,7 +53,7 @@ cat > "$APP/Contents/Info.plist" <<PLIST
     <key>LSApplicationCategoryType</key><string>public.app-category.utilities</string>
     <key>NSHighResolutionCapable</key><true/>
     <key>NSHumanReadableCopyright</key><string>GPL-3.0. Widmut Mac Cleaner.</string>
-    <key>SUFeedURL</key><string>https://github.com/widmut/widmut/releases/latest/download/appcast.xml</string>
+    <key>SUFeedURL</key><string>https://github.com/VedasarathiV/widmut/releases/latest/download/appcast.xml</string>
     <key>SUPublicEDKey</key><string>QaDnpjb2kiIdqemydO9gyCCnyPQdQ2TuRqXxdx4cNjU=</string>
     <key>SUEnableAutomaticChecks</key><true/>
     <key>SUAutomaticallyUpdate</key><true/>

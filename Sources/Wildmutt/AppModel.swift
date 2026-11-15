@@ -53,12 +53,12 @@ enum Page: String, CaseIterable, Identifiable {
         case .clean: "Caches, logs and leftovers of removed apps"
         case .uninstall: "Remove apps with everything they left behind"
         case .optimize: "Refresh system caches and services"
-        case .analyze: "See what takes the space"
+        case .analyze: "See what takes the space and clean it up"
         case .projects: "Build folders of projects you are not touching"
         case .installers: "Disk images and packages you no longer need"
         case .privacy: "Apple Intelligence, telemetry, and the settings macOS hides"
         case .slim: "Drop the Intel half of universal apps"
-        case .history: "Everything Mole changed, newest first"
+        case .history: "Everything Widmut changed, newest first"
         case .settings: "Protection rules, scan folders, Touch ID, deleted apps"
         }
     }

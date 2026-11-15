@@ -20,7 +20,7 @@ struct HistoryPage: View {
                 Toggle("Show previews and empty runs", isOn: $showPreviews).toggleStyle(.switch).controlSize(.small)
                 CircleIconButton(symbol: "arrow.clockwise", help: "Reload") { Task { await load() } }
                     .keyboardShortcut("r", modifiers: .command)
-                CircleIconButton(symbol: "doc.text.magnifyingglass", help: "Open Mole's logs") {
+                CircleIconButton(symbol: "doc.text.magnifyingglass", help: "Open Widmut logs") {
                     NSWorkspace.shared.open(URL(fileURLWithPath: ("~/Library/Logs/mole" as NSString).expandingTildeInPath))
                 }
             }
@@ -32,10 +32,10 @@ struct HistoryPage: View {
                 }
                 .animation(Motion.spring, value: showPreviews)
             } else if let error {
-                EmptyState(symbol: "exclamationmark.triangle", text: "Mole could not read its history", detail: error,
+                EmptyState(symbol: "exclamationmark.triangle", text: "Widmut could not read its history", detail: error,
                            actionTitle: "Try again") { Task { await load() } }
             } else if loading {
-                EmptyState(symbol: "hourglass", text: "Reading Mole's history…")
+                EmptyState(symbol: "hourglass", text: "Reading Widmut history…")
             } else {
                 EmptyState(symbol: "clock", text: all.isEmpty ? "Nothing yet." : "No changes yet.",
                            detail: all.isEmpty ? "Runs appear here after you clean, uninstall or optimize."

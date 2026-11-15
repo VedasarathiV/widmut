@@ -189,7 +189,7 @@ struct PurgeReport {
         }
         if !report.uninspected.isEmpty {
             let n = report.uninspected.count
-            report.notes.append("Mole could not check \(n == 1 ? "this build folder" : "\(n) build folders"), so it keeps "
+            report.notes.append("Widmut could not check \(n == 1 ? "this build folder" : "\(n) build folders"), so it keeps "
                                 + "\(n == 1 ? "it" : "them"): " + report.uninspected.prefix(3).joined(separator: ", ")
                                 + (n > 3 ? " and \(n - 3) more" : ""))
         }

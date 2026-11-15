@@ -177,7 +177,7 @@ enum TrashPolicy {
     /// Inside ~/Library only these hold disposable things (caches, logs, app data the user may
     /// prune); everything else there (Keychains, Mail, Messages, Containers, iCloud Drive,
     /// CloudStorage, Accounts…) is never offered.
-    static let libraryAllowed: Set<String> = ["Caches", "Logs", "Application Support"]
+    static let libraryAllowed: Set<String> = ["Caches", "Logs", "Application Support", "Developer"]
     /// Folders whose direct children belong to tools and apps: only one level further down.
     static let toolFolders: Set<String> = [".config", ".local", ".cache"]
     /// Never touched at any depth, wherever they appear.
@@ -191,9 +191,12 @@ enum TrashPolicy {
 
     static func allows(_ path: String, inside current: String?, home: String) -> Bool {
         guard let current else { return false } // the whole-Mac tour lists summaries, not items
-        let item = URL(fileURLWithPath: path).standardizedFileURL
-        let folder = URL(fileURLWithPath: current).standardizedFileURL
-        let homeURL = URL(fileURLWithPath: home).standardizedFileURL
+        let expPath = (path as NSString).expandingTildeInPath
+        let expCurrent = (current as NSString).expandingTildeInPath
+        let expHome = (home as NSString).expandingTildeInPath
+        let item = URL(fileURLWithPath: expPath).standardizedFileURL
+        let folder = URL(fileURLWithPath: expCurrent).standardizedFileURL
+        let homeURL = URL(fileURLWithPath: expHome).standardizedFileURL
         // Directly inside the mapped folder (Mole lists its children), and inside the home folder.
         guard item.deletingLastPathComponent().path == folder.path,
               item.path.hasPrefix(homeURL.path + "/") else { return false }
@@ -206,6 +209,23 @@ enum TrashPolicy {
             return libraryAllowed.contains(inHome[1]) && inHome.count >= 3
         }
         return !toolFolders.contains(inHome[0]) || inHome.count >= 3
+    }
+
+    /// Checks if a safe insight cache, simulator, or leftover folder can be moved to Trash.
+    static func allowsInsight(_ path: String, home: String) -> Bool {
+        let expanded = (path as NSString).expandingTildeInPath
+        let item = URL(fileURLWithPath: expanded).standardizedFileURL
+        let homeURL = URL(fileURLWithPath: home).standardizedFileURL
+        guard item.path.hasPrefix(homeURL.path + "/") else { return false }
+        if item.path == homeURL.path || item.path == homeURL.appendingPathComponent("Downloads").path { return false }
+        let inHome = Array(item.pathComponents.dropFirst(homeURL.pathComponents.count))
+        guard inHome.count >= 2, inHome.allSatisfy({ !never.contains($0) }) else { return false }
+        if inHome[0] == "Library" {
+            if inHome.count >= 2 && inHome[1] == "Application Support",
+               inHome.dropFirst(2).contains(where: { appSupportNever.contains($0) || $0.hasPrefix("com.apple.") }) { return false }
+            return inHome.count >= 2 && libraryAllowed.contains(inHome[1])
+        }
+        return true
     }
 }
 
@@ -222,6 +242,7 @@ struct AnalyzePage: View {
     @ViewState private var confirm: ConfirmAction?
     @ViewState private var hovered: String?
     @ViewState private var trashError: String?
+    @ViewState private var selectedPaths: Set<String> = []
 
     private let places: [(String, String?)] = [
         ("Whole Mac", nil), ("Home", "~"), ("Downloads", "~/Downloads"), ("Documents", "~/Documents"),
@@ -299,14 +320,14 @@ struct AnalyzePage: View {
                         if map.loading, !map.remeasuring {
                             VStack(spacing: 10) {
                                 ProgressView().tint(.white)
-                                Text("Mole is measuring \(currentName)…").font(.system(size: 13, weight: .medium))
+                                Text("Widmut is measuring \(currentName)…").font(.system(size: 13, weight: .medium))
                                 HStack(spacing: 4) { Text("Large folders take a minute ·"); Elapsed(since: map.startedAt) }.caption()
                             }
                             .frame(maxWidth: .infinity, maxHeight: .infinity)
                             .background(RoundedRectangle(cornerRadius: 20, style: .continuous).fill(.black.opacity(0.55)))
                             .transition(.opacity)
                         } else if let error = map.error {
-                            EmptyState(symbol: "exclamationmark.triangle", text: "Mole could not map \(currentName)", detail: error,
+                            EmptyState(symbol: "exclamationmark.triangle", text: "Widmut could not map \(currentName)", detail: error,
                                        actionTitle: "Try again", action: map.reload)
                         } else if entries.isEmpty {
                             EmptyState(symbol: "square.grid.3x3", text: map.result == nil ? "Pick a place above to map it." : "This folder is empty.")
@@ -319,9 +340,13 @@ struct AnalyzePage: View {
                 if !entries.isEmpty, !map.loading || map.remeasuring { list }
             }
         }
+        .bottomBar(!selectedPaths.isEmpty) { selectionActionBar }
         .confirmation($confirm)
         .onAppear { if map.result == nil, !map.loading, map.error == nil { map.show() } }
-        .onChange(of: map.trail) { trashError = nil }
+        .onChange(of: map.trail) {
+            trashError = nil
+            selectedPaths.removeAll()
+        }
     }
 
     // MARK: - Whole-Mac overview
@@ -335,6 +360,14 @@ struct AnalyzePage: View {
     private var overview: some View {
         let placesList = entries.filter { !$0.isInsight }
         let insights = entries.filter(\.isInsight)
+        let home = FileManager.default.homeDirectoryForCurrentUser.path
+        let cleanableInsights = insights.filter {
+            $0.size > 0 &&
+            (TrashPolicy.allowsInsight($0.path, home: home) || $0.cleanable == true) &&
+            !$0.name.contains("Old Downloads")
+        }
+        let totalCleanable = cleanableInsights.map(\.size).reduce(0, +)
+
         return VStack(alignment: .leading, spacing: 18) {
             // An even grid: three across for 3 or 6 places, otherwise two.
             LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 14), count: placesList.count % 3 == 0 ? 3 : 2),
@@ -365,32 +398,130 @@ struct AnalyzePage: View {
                   systemImage: "info.circle").font(.system(size: 12)).foregroundStyle(Theme.secondaryText)
 
             if !insights.isEmpty {
-                GlowCard(glow: .graphite, style: .plain, padding: 18) {
-                    VStack(alignment: .leading, spacing: 12) {
-                        Text("Worth a look").cardTitle()
-                        ForEach(insights) { entry in
-                            HStack(spacing: 12) {
-                                Image(systemName: entry.cleanable == true ? "sparkles" : "eye")
-                                    .foregroundStyle(entry.cleanable == true ? Theme.accent : Glow.blue.color).frame(width: 18)
-                                VStack(alignment: .leading, spacing: 2) {
-                                    Text(entry.name).font(.system(size: 13))
-                                    Text((entry.path as NSString).abbreviatingWithTildeInPath).font(.system(size: 11)).foregroundStyle(Theme.tertiaryText)
+                GlowCard(glow: .ember, style: .core, padding: 18) {
+                    VStack(alignment: .leading, spacing: 14) {
+                        HStack(alignment: .center) {
+                            VStack(alignment: .leading, spacing: 3) {
+                                HStack(spacing: 8) {
+                                    Text("Worth a look").cardTitle()
+                                    if totalCleanable > 0 {
+                                        Tag(text: "\(totalCleanable.bytesText) cleanable", color: Theme.accent)
+                                    }
                                 }
-                                Spacer()
-                                if entry.cleanable == true { Tag(text: "Clean can remove", color: Theme.accent) }
-                                Text(entry.size > 0 ? entry.size.bytesText : "–")
-                                    .font(.system(size: 12.5)).monospacedDigit().frame(width: 84, alignment: .trailing)
+                                Text("Safe caches, simulators, and developer leftovers you can clean directly to reclaim space.")
+                                    .font(.system(size: 11.5)).foregroundStyle(Theme.secondaryText)
                             }
-                            .contentShape(Rectangle())
-                            .onTapGesture { map.open(entry.path) }
-                            .contextMenu { menu(for: entry) }
-                            .accessibilityElement(children: .combine)
+                            Spacer()
+                            if totalCleanable > 0 {
+                                Button {
+                                    confirm = .init(
+                                        title: "Clean all safe items?",
+                                        message: "This will move \(totalCleanable.bytesText) of safe caches and logs to the Trash. You can recover them from the Trash anytime.",
+                                        button: "Clean All (\(totalCleanable.bytesText))"
+                                    ) {
+                                        cleanAllInsights(cleanableInsights)
+                                    }
+                                } label: {
+                                    Label("Clean All (\(totalCleanable.bytesText))", systemImage: "sparkles")
+                                }
+                                .buttonStyle(.pill)
+                            }
+                        }
+
+                        Divider().opacity(0.12)
+
+                        ForEach(insights) { entry in
+                            insightRow(entry, home: home)
                         }
                     }
                 }
             }
         }
         .transition(.blurFade)
+    }
+
+    private func insightRow(_ entry: AnalyzeResult.Entry, home: String) -> some View {
+        let isOldDownloads = entry.name.contains("Old Downloads") || entry.path.hasSuffix("/Downloads")
+        // Expand tilde so FileManager.fileExists works correctly
+        let expandedPath = (entry.path as NSString).expandingTildeInPath
+        let pathExists = FileManager.default.fileExists(atPath: expandedPath)
+        let canTrash = !isOldDownloads && TrashPolicy.allowsInsight(expandedPath, home: home) && (pathExists || entry.size > 0)
+        // Icon: sparkles for backend-confirmed safe, trash.circle for policy-safe, clock for downloads
+        let icon = isOldDownloads ? "folder.badge.clock" : ((entry.cleanable == true || canTrash) ? "sparkles" : "eye")
+
+        return HStack(spacing: 12) {
+            Image(systemName: icon)
+                .font(.system(size: 16))
+                .foregroundStyle(isOldDownloads ? Glow.blue.color : Theme.accent)
+                .frame(width: 22)
+
+            VStack(alignment: .leading, spacing: 2) {
+                HStack(spacing: 6) {
+                    Text(entry.name).font(.system(size: 13, weight: .semibold))
+                    if canTrash {
+                        Tag(text: "Can clean", color: Theme.accent)
+                    } else if entry.cleanable == true {
+                        Tag(text: "Safe to clean", color: Theme.accent)
+                    }
+                }
+                Text((entry.path as NSString).abbreviatingWithTildeInPath)
+                    .font(.system(size: 11)).foregroundStyle(Theme.tertiaryText)
+            }
+
+            Spacer()
+
+            Text(entry.size > 0 ? entry.size.bytesText : "–")
+                .font(.system(size: 13, weight: .semibold)).monospacedDigit()
+                .frame(minWidth: 70, alignment: .trailing)
+
+            HStack(spacing: 8) {
+                CircleIconButton(symbol: "folder", help: "Show in Finder") {
+                    let revealPath = pathExists ? expandedPath : (entry.path as NSString).expandingTildeInPath
+                    NSWorkspace.shared.selectFile(revealPath, inFileViewerRootedAtPath: "")
+                }
+
+                if isOldDownloads {
+                    Button("Review Downloads") {
+                        map.jump(to: entry.path)
+                    }
+                    .buttonStyle(PillButtonStyle(kind: .secondary, compact: true))
+                } else if canTrash {
+                    Button("Clean") {
+                        confirm = .init(
+                            title: "Clean \(entry.name)?",
+                            message: "This will move \(entry.size.bytesText) at \((entry.path as NSString).abbreviatingWithTildeInPath) to the Trash. You can restore it from the Trash anytime.",
+                            button: "Clean Now"
+                        ) {
+                            trashPath(expandedPath, name: entry.name)
+                        }
+                    }
+                    .buttonStyle(PillButtonStyle(kind: .primary, compact: true))
+                } else if entry.cleanable == true {
+                    Button("Clean") {
+                        confirm = .init(
+                            title: "Clean \(entry.name)?",
+                            message: "This will move \(entry.size.bytesText) at \((entry.path as NSString).abbreviatingWithTildeInPath) to the Trash.",
+                            button: "Clean Now"
+                        ) {
+                            trashPath(expandedPath, name: entry.name)
+                        }
+                    }
+                    .buttonStyle(PillButtonStyle(kind: .primary, compact: true))
+                }
+            }
+        }
+        .padding(.vertical, 6)
+        .padding(.horizontal, 10)
+        .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Color.white.opacity(hovered == entry.id ? 0.05 : 0.025)))
+        .contentShape(Rectangle())
+        .onHover { isHovered in
+            hovered = isHovered ? entry.id : (hovered == entry.id ? nil : hovered)
+        }
+        .onTapGesture {
+            if entry.isDirectory { map.open(entry.path) }
+        }
+        .contextMenu { menu(for: entry) }
+        .accessibilityElement(children: .combine)
     }
 
     /// Used space of the startup volume, the honest total for the whole-Mac view.
@@ -473,44 +604,212 @@ struct AnalyzePage: View {
 
     private var list: some View {
         let top = Double(entries.first?.size ?? 1)
+        let home = FileManager.default.homeDirectoryForCurrentUser.path
+        let trashableEntries = entries.filter {
+            let expPath = ($0.path as NSString).expandingTildeInPath
+            return TrashPolicy.allows(expPath, inside: map.current, home: home) && (FileManager.default.fileExists(atPath: expPath) || $0.size > 0)
+        }
+
         return GlowCard(glow: .graphite, style: .plain, padding: 18) {
-            VStack(spacing: 10) {
-                ForEach(entries.prefix(40)) { entry in
-                    HStack(spacing: 12) {
-                        Image(systemName: entry.isDirectory ? "folder.fill" : "doc.fill")
-                            .foregroundStyle(entry.isDirectory ? Glow.blue.color : Theme.secondaryText).frame(width: 18)
-                        Text(entry.name).font(.system(size: 13)).lineLimit(1)
-                        Spacer()
-                        DotMeter(value: Double(entry.size) / top, count: 24, color: Glow.blue.color)
-                        Text(entry.size.bytesText).font(.system(size: 12.5)).monospacedDigit().frame(width: 84, alignment: .trailing)
+            VStack(spacing: 8) {
+                // Header row with select-all
+                HStack(spacing: 12) {
+                    if !trashableEntries.isEmpty {
+                        Button {
+                            if selectedPaths.count == trashableEntries.count {
+                                selectedPaths.removeAll()
+                            } else {
+                                selectedPaths = Set(trashableEntries.map(\.path))
+                            }
+                        } label: {
+                            Image(systemName: selectedPaths.count == trashableEntries.count && !trashableEntries.isEmpty ? "checkmark.circle.fill" : "circle")
+                                .font(.system(size: 14))
+                                .foregroundStyle(selectedPaths.isEmpty ? Theme.tertiaryText : Theme.accent)
+                        }
+                        .buttonStyle(.plain)
+                        .help(selectedPaths.count == trashableEntries.count ? "Deselect all" : "Select all trashable items")
                     }
-                    .contentShape(Rectangle())
-                    .onTapGesture { if entry.isDirectory { map.open(entry.path) } }
-                    .contextMenu { menu(for: entry) }
+
+                    Text("Files and Folders").font(.system(size: 12, weight: .semibold)).foregroundStyle(Theme.secondaryText)
+                    Spacer()
+                    Text("Size").font(.system(size: 12, weight: .semibold)).foregroundStyle(Theme.secondaryText).frame(width: 84, alignment: .trailing)
+                    Text("Actions").font(.system(size: 12, weight: .semibold)).foregroundStyle(Theme.secondaryText).frame(width: 68, alignment: .center)
+                }
+                .padding(.horizontal, 8)
+                .padding(.bottom, 4)
+
+                Divider().opacity(0.12)
+
+                ForEach(entries.prefix(60)) { entry in
+                    entryRow(entry, top: top, home: home)
                 }
             }
         }
     }
 
+    private func entryRow(_ entry: AnalyzeResult.Entry, top: Double, home: String) -> some View {
+        let expPath = (entry.path as NSString).expandingTildeInPath
+        let canTrash = TrashPolicy.allows(expPath, inside: map.current, home: home) && (FileManager.default.fileExists(atPath: expPath) || entry.size > 0)
+        let isSelected = selectedPaths.contains(entry.path)
+
+        return HStack(spacing: 12) {
+            if canTrash {
+                Button {
+                    if isSelected {
+                        selectedPaths.remove(entry.path)
+                    } else {
+                        selectedPaths.insert(entry.path)
+                    }
+                } label: {
+                    Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
+                        .font(.system(size: 14))
+                        .foregroundStyle(isSelected ? Theme.accent : Theme.tertiaryText)
+                }
+                .buttonStyle(.plain)
+            } else {
+                Image(systemName: "lock")
+                    .font(.system(size: 10))
+                    .foregroundStyle(Theme.tertiaryText.opacity(0.4))
+                    .frame(width: 14)
+            }
+
+            Image(systemName: entry.isDirectory ? "folder.fill" : "doc.fill")
+                .foregroundStyle(entry.isDirectory ? Glow.blue.color : Theme.secondaryText)
+                .frame(width: 18)
+
+            Text(entry.name)
+                .font(.system(size: 13, weight: entry.isDirectory ? .medium : .regular))
+                .lineLimit(1)
+
+            Spacer()
+
+            DotMeter(value: Double(entry.size) / top, count: 20, color: Glow.blue.color)
+
+            Text(entry.size.bytesText)
+                .font(.system(size: 12.5))
+                .monospacedDigit()
+                .frame(width: 84, alignment: .trailing)
+
+            HStack(spacing: 6) {
+                CircleIconButton(symbol: "folder", help: "Show in Finder") {
+                    let reveal = FileManager.default.fileExists(atPath: expPath) ? expPath : entry.path
+                    NSWorkspace.shared.selectFile(reveal, inFileViewerRootedAtPath: "")
+                }
+
+                if canTrash {
+                    CircleIconButton(symbol: "trash", help: "Move to Trash") {
+                        confirm = .init(
+                            title: "Move \(entry.name) to the Trash?",
+                            message: "\(entry.size.bytesText) at \((entry.path as NSString).abbreviatingWithTildeInPath). You can restore it from the Trash.",
+                            button: "Move to Trash"
+                        ) {
+                            trashPath(entry.path, name: entry.name)
+                        }
+                    }
+                } else {
+                    Spacer().frame(width: 26)
+                }
+            }
+            .frame(width: 68)
+        }
+        .padding(.vertical, 4)
+        .padding(.horizontal, 8)
+        .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(isSelected ? Theme.accent.opacity(0.08) : Color.white.opacity(hovered == entry.id ? 0.04 : 0)))
+        .contentShape(Rectangle())
+        .onHover { isHovered in
+            hovered = isHovered ? entry.id : (hovered == entry.id ? nil : hovered)
+        }
+        .onTapGesture {
+            if entry.isDirectory {
+                selectedPaths.removeAll()
+                map.open(entry.path)
+            }
+        }
+        .contextMenu { menu(for: entry) }
+    }
+
+    private var selectionActionBar: some View {
+        let selectedEntries = entries.filter { selectedPaths.contains($0.path) }
+        let totalSelectedBytes = selectedEntries.map(\.size).reduce(0, +)
+
+        return SelectionBar(
+            glow: .ember,
+            title: "\(selectedPaths.count) selected · \(totalSelectedBytes.bytesText)",
+            subtitle: selectedEntries.prefix(3).map(\.name).joined(separator: ", ") + (selectedEntries.count > 3 ? "…" : ""),
+            clear: { selectedPaths.removeAll() }
+        ) {
+            Button("Move to Trash (\(totalSelectedBytes.bytesText))") {
+                confirm = .init(
+                    title: "Move \(selectedPaths.count) item\(selectedPaths.count == 1 ? "" : "s") to the Trash?",
+                    message: "\(totalSelectedBytes.bytesText) total. You can restore them from the Trash anytime.",
+                    button: "Move to Trash"
+                ) {
+                    let paths = Array(selectedPaths).map { ($0 as NSString).expandingTildeInPath }
+                    let failed = Trash.move(paths)
+                    selectedPaths.removeAll()
+                    if !failed.isEmpty {
+                        withAnimation(Motion.quick) {
+                            trashError = "\(failed.count) item(s) could not be moved to the Trash."
+                        }
+                    } else {
+                        trashError = nil
+                    }
+                    map.forgetAndReload()
+                }
+            }
+            .buttonStyle(.pill)
+        }
+    }
+
+    private func cleanAllInsights(_ list: [AnalyzeResult.Entry]) {
+        let paths = list.map { ($0.path as NSString).expandingTildeInPath }
+            .filter { FileManager.default.fileExists(atPath: $0) || true }
+        guard !paths.isEmpty else { return }
+        let failed = Trash.move(paths)
+        if !failed.isEmpty {
+            withAnimation(Motion.quick) {
+                trashError = "\(failed.count) item(s) could not be moved to the Trash."
+            }
+        } else {
+            trashError = nil
+        }
+        map.forgetAndReload()
+    }
+
+    private func trashPath(_ path: String, name: String) {
+        let expPath = (path as NSString).expandingTildeInPath
+        let failed = Trash.move([expPath])
+        if failed.isEmpty {
+            trashError = nil
+            selectedPaths.remove(path)
+            selectedPaths.remove(expPath)
+            map.forgetAndReload()
+        } else {
+            withAnimation(Motion.quick) {
+                trashError = "\(name) could not be moved to the Trash. It may belong to macOS or another process."
+            }
+        }
+    }
+
     @ViewBuilder private func menu(for entry: AnalyzeResult.Entry) -> some View {
+        let expPath = (entry.path as NSString).expandingTildeInPath
         if entry.isDirectory { Button("Open") { map.open(entry.path) } }
-        Button("Show in Finder") { NSWorkspace.shared.selectFile(entry.path, inFileViewerRootedAtPath: "") }
-        if !isOverview, !entry.isInsight,
-           TrashPolicy.allows(entry.path, inside: map.current, home: FileManager.default.homeDirectoryForCurrentUser.path),
-           FileManager.default.fileExists(atPath: entry.path) {
+        Button("Show in Finder") {
+            let reveal = FileManager.default.fileExists(atPath: expPath) ? expPath : entry.path
+            NSWorkspace.shared.selectFile(reveal, inFileViewerRootedAtPath: "")
+        }
+        let home = FileManager.default.homeDirectoryForCurrentUser.path
+        let canTrash = (TrashPolicy.allows(expPath, inside: map.current, home: home) ||
+                        (isOverview && entry.isInsight && TrashPolicy.allowsInsight(expPath, home: home))) &&
+                       (FileManager.default.fileExists(atPath: expPath) || entry.size > 0) &&
+                       !entry.name.contains("Old Downloads")
+        if canTrash {
             Divider()
             Button("Move to Trash…", role: .destructive) {
                 confirm = .init(title: "Move \(entry.name) to the Trash?",
                                 message: "\(entry.size.bytesText) at \((entry.path as NSString).abbreviatingWithTildeInPath). You can restore it from the Trash.",
                                 button: "Move to Trash") {
-                    if Trash.move([entry.path]).isEmpty {
-                        trashError = nil
-                        map.forgetAndReload()
-                    } else {
-                        withAnimation(Motion.quick) {
-                            trashError = "\(entry.name) could not be moved to the Trash. It may belong to macOS or another user."
-                        }
-                    }
+                    trashPath(entry.path, name: entry.name)
                 }
             }
         }

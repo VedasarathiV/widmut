@@ -74,7 +74,7 @@ struct SettingsPage: View {
                             case nil: PulseDot(color: .white)
                             }
                         }
-                        Text("Approve Mole's administrator steps with your fingerprint instead of typing the password. Changing it asks for your password once.").caption()
+                        Text("Approve Widmut's administrator steps with your fingerprint instead of typing the password. Changing it asks for your password once.").caption()
                         Spacer(minLength: 0)
                         if let on = touchID {
                             Button(on ? "Turn off" : "Turn on") {

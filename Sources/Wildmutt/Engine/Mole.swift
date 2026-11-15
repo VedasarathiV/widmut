@@ -9,7 +9,7 @@ struct MoleError: LocalizedError {
     var output = Data()
 
     var errorDescription: String? {
-        message.isEmpty ? "Mole stopped with code \(code)." : message
+        message.isEmpty ? "Widmut engine stopped with code \(code)." : message
     }
 }
 

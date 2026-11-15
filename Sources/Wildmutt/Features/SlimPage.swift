@@ -39,7 +39,7 @@ struct SlimPage: View {
                             }
                         }
                     }
-                    Text("Running apps are skipped, so quit them first. Mole shows the final list and waits for your confirmation.").caption()
+                    Text("Running apps are skipped, so quit them first. Widmut shows the final list and waits for your confirmation.").caption()
                 }
             } else if scan.error != nil, !scan.scanning {
                 EmptyState(symbol: "exclamationmark.triangle", text: "The scan did not finish",

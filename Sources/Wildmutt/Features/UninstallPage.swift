@@ -113,7 +113,7 @@ struct UninstallPage: View {
 
             if catalog.apps.isEmpty {
                 if let error = catalog.error {
-                    EmptyState(symbol: "exclamationmark.triangle", text: "Mole could not list your apps", detail: error,
+                    EmptyState(symbol: "exclamationmark.triangle", text: "Widmut could not list your apps", detail: error,
                                actionTitle: "Try again") { Task { await catalog.load() } }
                 } else if catalog.loading {
                     skeleton
@@ -132,16 +132,16 @@ struct UninstallPage: View {
                 }
                 .animation(Motion.spring, value: sortBySize)
                 .animation(Motion.quick, value: query)
-                Text("Sizes are the app bundles as Mole measured them. Leftovers are listed in the preview.").caption()
+                Text("Sizes are the app bundles as Widmut measured them. Leftovers are listed in the preview.").caption()
             }
         }
         .bottomBar(!selected.isEmpty) { actionBar }
         .confirmation($confirm)
-        // Not `.task`: leaving the page must not cancel Mole half way through the list.
+        // Not `.task`: leaving the page must not cancel Widmut half way through the list.
         .onAppear { if catalog.apps.isEmpty { Task { await catalog.load() } } }
     }
 
-    /// Placeholder tiles while Mole lists the apps (it takes a few seconds the first time).
+    /// Placeholder tiles while Widmut lists the apps (it takes a few seconds the first time).
     private var skeleton: some View {
         LazyVGrid(columns: [GridItem(.adaptive(minimum: 210), spacing: 14)], spacing: 14) {
             ForEach(0..<12, id: \.self) { _ in
@@ -159,14 +159,14 @@ struct UninstallPage: View {
                      subtitle: chosen.prefix(3).map(\.name).joined(separator: ", ") + (chosen.count > 3 ? "…" : ""),
                      clear: { selected.removeAll() }) {
             Toggle("Personal data too", isOn: $withData).toggleStyle(.switch).controlSize(.small)
-                .help("Also remove the app's documents and settings Mole finds")
+                .help("Also remove the app's documents and settings Widmut finds")
             Toggle("Skip Trash", isOn: $permanent).toggleStyle(.switch).controlSize(.small)
                 .help("Delete for good instead of moving to the Trash")
             Button("Preview") {
                 model.run("Preview uninstall", ["uninstall", "--dry-run"] + flags + names, plan: chosenBytes)
             }
             .buttonStyle(.pillSecondary)
-            .help("See every file Mole would remove, without removing anything")
+            .help("See every file Widmut would remove, without removing anything")
             Button("Uninstall") { askToUninstall() }.buttonStyle(.pill)
         }
     }
@@ -176,8 +176,8 @@ struct UninstallPage: View {
 
     private func askToUninstall() {
         confirm = .init(title: "Uninstall \(chosen.count) app\(chosen.count == 1 ? "" : "s")?",
-                        message: permanent ? "Apps and their leftovers are deleted for good. Mole shows the full list and asks once more." :
-                            "Apps and their leftovers go to the Trash, so you can still restore them. Mole shows the full list and asks once more.",
+                        message: permanent ? "Apps and their leftovers are deleted for good. Widmut shows the full list and asks once more." :
+                            "Apps and their leftovers go to the Trash, so you can still restore them. Widmut shows the full list and asks once more.",
                         button: "Uninstall") {
             model.run("Uninstalling", ["uninstall"] + flags + names, plan: chosenBytes) {
                 selected.removeAll()

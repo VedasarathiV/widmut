@@ -331,7 +331,7 @@ struct ScanQuickAction<Report>: View {
     private var detail: String {
         if scan.scanning { return "Found so far" }
         if let at = scan.finishedAt { return "Checked \(at.formatted(.relative(presentation: .named)))" }
-        return scan.error == nil ? "Scan to see what Mole can free" : "The last scan did not finish"
+        return scan.error == nil ? "Scan to see what Widmut can free" : "The last scan did not finish"
     }
 }
 

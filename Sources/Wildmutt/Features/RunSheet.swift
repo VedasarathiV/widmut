@@ -42,7 +42,7 @@ struct RunSheet: View {
             HStack {
                 Button(showLog ? "Hide log" : "Show log") { showLog.toggle() }
                     .buttonStyle(.pillSecondary)
-                    .help("Mole's own output, line by line")
+                    .help("Widmut's own output, line by line")
                 Spacer()
                 if session.isFinished {
                     Button("Done") { model.closeSession() }
@@ -50,7 +50,7 @@ struct RunSheet: View {
                         .keyboardShortcut(.defaultAction)
                 } else {
                     Button("Stop") { session.cancel() }.buttonStyle(.pillSecondary)
-                        .help("Stops Mole the way Ctrl-C would, so Mole cleans up after itself")
+                        .help("Stops Widmut the way Ctrl-C would, so Widmut cleans up after itself")
                 }
             }
         }
@@ -72,7 +72,7 @@ struct RunSheet: View {
                     LogLine(text: session.live).opacity(0.75)
                 }
                 if session.lines.isEmpty, session.live.isEmpty {
-                    Text("Starting Mole…").caption()
+                    Text("Starting Widmut…").caption()
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -85,7 +85,7 @@ struct RunSheet: View {
         case .needsPassword:
             GlowCard(glow: .violet, style: .rim, padding: 18) {
                 VStack(alignment: .leading, spacing: 12) {
-                    Label("Mole needs your administrator password for this step", systemImage: "lock.fill").cardTitle()
+                    Label("Widmut needs your administrator password for this step", systemImage: "lock.fill").cardTitle()
                     HStack {
                         SecureField("Password", text: $password)
                             .textFieldStyle(.plain)
@@ -131,7 +131,7 @@ struct RunSheet: View {
         case .running: "Working…"
         case .needsPassword: "Waiting for your password"
         case .needsAnswer: "Waiting for you"
-        case .finished(let code): code == 0 ? "Finished" : code == 130 || code == 143 ? "Stopped" : "Mole stopped with code \(code)"
+        case .finished(let code): code == 0 ? "Finished" : code == 130 || code == 143 ? "Stopped" : "Widmut stopped with code \(code)"
         }
     }
 
@@ -237,14 +237,14 @@ private struct RunActivity: View {
         switch phase {
         case .running:
             progress.now ?? progress.steps.last?.section.map { "Working on \($0.lowercased())" }
-                ?? (progress.steps.isEmpty ? "Starting Mole" : "Working")
+                ?? (progress.steps.isEmpty ? "Starting Widmut" : "Working")
         case .needsPassword: "Waiting for your password"
-        case .needsAnswer: progress.review.isEmpty ? "Waiting for your answer" : "Check what Mole will remove, then confirm"
+        case .needsAnswer: progress.review.isEmpty ? "Waiting for your answer" : "Check what Widmut will remove, then confirm"
         case .finished(let code) where code == 0 && progress.dryRun: "Preview only · nothing was removed"
         case .finished(let code) where code == 0:
             idle ? "Nothing was changed"
                 : showsBytes ? "Freed \(progress.freed.bytesText) · \(count(done.count))" : "\(count(done.count)) done"
-        case .finished(let code): code == 130 || code == 143 ? "Stopped" : "Mole stopped early"
+        case .finished(let code): code == 130 || code == 143 ? "Stopped" : "Widmut stopped early"
         }
     }
 
