@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="docs/icon.png" width="128" alt="Widmut icon" />
+<img src="docs/logo.png" width="160" alt="Widmut logo" />
 
 # Widmut
 
