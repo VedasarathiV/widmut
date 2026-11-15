@@ -1,16 +1,16 @@
 #!/bin/bash
-# Records the demo video: runs Wildmutt's page tour and screen-records its window, then encodes it.
-# Usage: scripts/demo-video.sh [app] [output]   (defaults: build/Wildmutt.app, build/demo.mp4)
+# Records the demo video: runs Widmut's page tour and screen-records its window, then encodes it.
+# Usage: scripts/demo-video.sh [app] [output]   (defaults: build/Widmut.app, build/demo.mp4)
 # Needs ffmpeg and Screen Recording permission for the terminal; the window must stay uncovered
 # for about 45 s. Uses cached scan results; never starts a Mole action.
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
-APP="${1:-build/Wildmutt.app}"
+APP="${1:-build/Widmut.app}"
 OUT="${2:-build/demo.mp4}"
 WORK="$(mktemp -d)"
 
-"$APP/Contents/MacOS/Wildmutt" -tour "$WORK" &
+"$APP/Contents/MacOS/Widmut" -tour "$WORK" &
 TOUR=$!
 # The tour waits for live status and leftovers (up to a minute) before it starts.
 for _ in $(seq 700); do [ -s "$WORK/rect" ] && break; sleep 0.1; done

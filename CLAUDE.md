@@ -12,7 +12,7 @@ folders or memories.
 - `Sources/Wildmutt/Features`: one file per page; long-lived scans and stores live in `AppModel`.
   `PrivacyPage.swift` is the one page that does not go through Mole: it writes per-user preferences
   through `CFPreferences` and keeps the value each one replaced in its own undo journal.
-- `Vendor/mole`: the bundled Mole engine (`VERSION` file). Do not edit it; update it as a whole.
+- `Vendor/engine`: the bundled engine (`VERSION` file). Do not edit it; update it as a whole.
 - `scripts/bundle.sh` builds `build/Wildmutt.app` (release binary + Mole + icon, ad-hoc signed).
 
 ## Build rules

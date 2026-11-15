@@ -9,17 +9,18 @@ mkdir -p "$OUT"
 touch "$OUT/.metadata_never_index"
 APP="$OUT/Widmut.app"
 VERSION="$(cat VERSION 2>/dev/null || echo 0.1.0)"
-MOLE_VERSION="$(cat Vendor/mole/VERSION)"
+ENGINE_VERSION="$(cat Vendor/engine/VERSION)"
 
 swift build -c release --arch arm64
-BIN="$(swift build -c release --arch arm64 --show-bin-path)/Wildmutt"
+BIN="$(swift build -c release --arch arm64 --show-bin-path)/Widmut"
 
 rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp "$BIN" "$APP/Contents/MacOS/Widmut"
 mkdir -p "$APP/Contents/Frameworks"
 ditto "$(dirname "$BIN")/Sparkle.framework" "$APP/Contents/Frameworks/Sparkle.framework"
-cp -R Vendor/mole "$APP/Contents/Resources/mole"
+cp -R Vendor/engine "$APP/Contents/Resources/engine"
+ln -s engine "$APP/Contents/Resources/mole" 2>/dev/null || cp -R Vendor/engine "$APP/Contents/Resources/mole"
 cp LICENSE "$APP/Contents/Resources/LICENSE"
 
 # Icon: build the .icns with every size macOS asks for using the original logo
@@ -48,7 +49,7 @@ cat > "$APP/Contents/Info.plist" <<PLIST
     <key>CFBundlePackageType</key><string>APPL</string>
     <key>CFBundleShortVersionString</key><string>$VERSION</string>
     <key>CFBundleVersion</key><string>$VERSION</string>
-    <key>MoleVersion</key><string>$MOLE_VERSION</string>
+    <key>EngineVersion</key><string>$ENGINE_VERSION</string>
     <key>LSMinimumSystemVersion</key><string>26.0</string>
     <key>LSApplicationCategoryType</key><string>public.app-category.utilities</string>
     <key>NSHighResolutionCapable</key><true/>

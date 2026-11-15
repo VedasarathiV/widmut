@@ -1,6 +1,6 @@
 import Foundation
 import Testing
-@testable import Wildmutt
+@testable import Widmut
 
 struct ParserTests {
     @Test func cleanDryRun() {

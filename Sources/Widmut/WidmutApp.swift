@@ -51,7 +51,6 @@ struct WidmutApp: App {
 extension NSApplication {
     /// The main window, not the menu bar card, a run sheet or the leftovers panel.
     var widmutWindow: NSWindow? { windows.first { $0.identifier?.rawValue.hasPrefix("main") == true } }
-    var wildmuttWindow: NSWindow? { widmutWindow }
 }
 
 final class AppDelegate: NSObject, NSApplicationDelegate {

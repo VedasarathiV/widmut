@@ -2,14 +2,14 @@
 import PackageDescription
 
 let package = Package(
-    name: "Wildmutt",
+    name: "Widmut",
     platforms: [.macOS(.v26)],
     targets: [
         .target(name: "UAF", cSettings: [.unsafeFlags(["-fobjc-arc"])]),
         .executableTarget(
-            name: "Wildmutt",
+            name: "Widmut",
             dependencies: ["Sparkle", "UAF"],
-            path: "Sources/Wildmutt",
+            path: "Sources/Widmut",
             swiftSettings: [.swiftLanguageMode(.v5)],
             // Sparkle.framework sits next to the binary in .build and in Contents/Frameworks in the app.
             linkerSettings: [.unsafeFlags(["-Xlinker", "-rpath", "-Xlinker", "@executable_path/../Frameworks",
@@ -24,9 +24,9 @@ let package = Package(
             checksum: "17e28312b8e18ab7cdbbe09a6fb28cc55a5479ec6c371dbc07cdecd2a14fd959"
         ),
         .testTarget(
-            name: "WildmuttTests",
-            dependencies: ["Wildmutt"],
-            path: "Tests/WildmuttTests",
+            name: "WidmutTests",
+            dependencies: ["Widmut"],
+            path: "Tests/WidmutTests",
             swiftSettings: [.swiftLanguageMode(.v5)]
         ),
     ]

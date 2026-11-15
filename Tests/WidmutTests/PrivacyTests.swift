@@ -1,6 +1,6 @@
 import Foundation
 import Testing
-@testable import Wildmutt
+@testable import Widmut
 
 /// The Privacy page's rules, without ever writing a preference on this Mac.
 @MainActor

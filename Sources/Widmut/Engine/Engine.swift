@@ -15,13 +15,17 @@ struct MoleError: LocalizedError {
 
 /// Locates the Mole engine bundled inside the app and runs its non-interactive commands.
 enum Mole {
-    /// `Contents/Resources/mole` inside the app; `Vendor/mole` when run with `swift run`.
+    /// `Contents/Resources/engine` or `Contents/Resources/mole` inside the app; `Vendor/engine` when run with `swift run`.
     static let root: URL = {
+        if let res = Bundle.main.resourceURL?.appendingPathComponent("engine"),
+           FileManager.default.fileExists(atPath: res.appendingPathComponent("mole").path) {
+            return res
+        }
         if let res = Bundle.main.resourceURL?.appendingPathComponent("mole"),
            FileManager.default.fileExists(atPath: res.appendingPathComponent("mole").path) {
             return res
         }
-        return URL(fileURLWithPath: FileManager.default.currentDirectoryPath).appendingPathComponent("Vendor/mole")
+        return URL(fileURLWithPath: FileManager.default.currentDirectoryPath).appendingPathComponent("Vendor/engine")
     }()
 
     static var executable: String { root.appendingPathComponent("mole").path }
