@@ -28,6 +28,10 @@ struct WidmutApp: App {
         .defaultSize(width: 1280, height: 820)
         .commands {
             CommandGroup(replacing: .newItem) {}
+            // The stock About panel only shows the copyright, so the developer credit is set here.
+            CommandGroup(replacing: .appInfo) {
+                Button("About Widmut") { delegate.showAboutPanel() }
+            }
             CommandGroup(after: .appInfo) {
                 Button("Check for Updates…") { delegate.updater?.checkForUpdates(nil) }
             }
@@ -98,10 +102,57 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
+    /// The app menu's About item. The standard panel only shows the copyright, so the developer
+    /// credit goes in as credits and sits under the name.
+    func showAboutPanel() {
+        let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "dev"
+        let body: [NSAttributedString.Key: Any] = [
+            .font: NSFont.systemFont(ofSize: 11),
+            .foregroundColor: NSColor.secondaryLabelColor,
+        ]
+        let credits = NSMutableAttributedString()
+        credits.append(NSAttributedString(string: "Free, open-source macOS cleaner.\n", attributes: body))
+        credits.append(NSAttributedString(string: "Developed by DigiMartrix", attributes: [
+            .font: NSFont.systemFont(ofSize: 11, weight: .semibold),
+            .link: URL(string: "https://digimartrix.com/")!,
+        ]))
+        credits.append(NSAttributedString(string: " · digimartrix.com", attributes: body))
+        NSApp.orderFrontStandardAboutPanel(options: [
+            .applicationName: "Widmut",
+            .applicationVersion: version,
+            .version: "",
+            .credits: credits,
+        ])
+        NSApp.activate(ignoringOtherApps: true)
+    }
+
     /// `-snapshot <file.png> [-snapshotDelay <seconds>]`: draws the window into a PNG without the
     /// screen (works while the Mac is locked), then quits. Used for screenshots in reviews.
     private func scheduleSnapshot() {
         let defaults = UserDefaults.standard
+        // `-snapshotAbout 1` prints what the About panel shows, then quits.
+        if defaults.bool(forKey: "snapshotAbout") {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
+                self.showAboutPanel()
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                    for window in NSApp.windows where window.isVisible {
+                        var texts: [String] = []
+                        func walk(_ view: NSView) {
+                            if let field = view as? NSTextField {
+                                let text = field.attributedStringValue.string
+                                if !text.isEmpty { texts.append(text) }
+                            }
+                            if let text = view as? NSTextView, !text.string.isEmpty { texts.append(text.string) }
+                            view.subviews.forEach(walk)
+                        }
+                        if let content = window.contentView { walk(content) }
+                        if !texts.isEmpty { print("ABOUT \(type(of: window)): \(texts.joined(separator: " | "))") }
+                    }
+                    exit(0)
+                }
+            }
+            return
+        }
         guard let path = defaults.string(forKey: "snapshot") else { return }
         if defaults.bool(forKey: "snapshotTray") {
             DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
