@@ -8,38 +8,31 @@ import SwiftUI
 enum Tour {
     private static let steps: [(seconds: Double, step: @MainActor (AppModel) -> Void)] = [
         (3.5, { $0.page = .overview }),
-        (3.5, { $0.page = .clean }),
+        (3.5, { $0.page = .cleanup }),
         (3, { $0.page = .uninstall }),
         (3, { _ in UserDefaults.standard.set(true, forKey: "uninstall.showLeftovers") }),
         (2, { _ in UserDefaults.standard.set(false, forKey: "uninstall.showLeftovers") }),
         (3, { $0.page = .optimize }),
-        (3.5, { $0.page = .analyze }),
-        (3, { $0.page = .projects }),
-        (3, { $0.page = .installers }),
-        (2.5, { $0.page = .slim }),
-        // A recorded slim run in the run sheet: Mole never starts.
-        (7, { $0.replay("Slimming apps", transcript: slimRun, plan: 886_800_000, pace: 0.33) }),
+        (3.5, { $0.page = .storage }),
+        // A recorded cleanup in the run sheet: Mole never starts.
+        (7, { $0.replay("Cleaning caches", transcript: cleanRun, plan: 1_510_000_000, pace: 0.33) }),
         (1, { $0.closeSession() }),
-        (3, { $0.page = .history }),
+        (3, { $0.page = .activity }),
         (3, { $0.page = .settings }),
         (3, { $0.page = .overview }),
     ]
 
-    private static let slimRun = """
-        Apps to slim:
-        ◎ Google Chrome, 576.3MB
-        ◎ Slack, 212.4MB
-        ◎ Zoom, 98.1MB
-        ⠋ [1/3] Slimming Google Chrome...\\r
-        ⠙ [1/3] Slimming Google Chrome...\\r
-        \\r✓ [1/3] Google Chrome, 576.3MB
-        ⠹ [2/3] Slimming Slack...\\r
-        ⠸ [2/3] Slimming Slack...\\r
-        \\r✓ [2/3] Slack, 212.4MB
-        ⠼ [3/3] Slimming Zoom...\\r
-        ⠴ [3/3] Slimming Zoom...\\r
-        \\r✓ [3/3] Zoom, 98.1MB
-        Slimmed 3 apps, freed 886.8MB: Google Chrome, Slack, Zoom
+    private static let cleanRun = """
+        ◎ System caches need sudo, run sudo -v && mo clean for full preview
+        ➤ User essentials
+          ⠋ [1/3] Cleaning User app cache...\\r
+        \\r  ✓ [1/3] User app cache · 1.20GB
+        ➤ Cloud & Office
+          ⠙ [2/3] Cleaning Office cache...\\r
+        \\r  ✓ [2/3] Office cache · 310MB
+        ➤ Large files
+          ✓ Nothing to clean
+        Tracked cleanup: 1.51GB
         """
 
     static func start(_ model: AppModel, into folder: String, waited: Double = 0) {

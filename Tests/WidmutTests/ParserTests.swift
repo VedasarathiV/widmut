@@ -35,16 +35,6 @@ struct ParserTests {
         #expect(r.itemCount == 524 && r.categoryCount == 6)
     }
 
-    @Test func purgeAndSlim() {
-        let purge = PurgeReport.parse("✓ [DRY RUN] ~/PROJECTS/A/node_modules, 1.5GB\n\r✓ [DRY RUN] ~/PROJECTS/A/apps/web/.next, 20MB\nWould free approximately: 1.52GB | Items: 2")
-        #expect(purge.artifacts.count == 2)
-        #expect(purge.artifacts[1].project == ("~/PROJECTS/A/apps/web" as NSString).expandingTildeInPath)
-        #expect(purge.artifacts[0].project == ("~/PROJECTS/A" as NSString).expandingTildeInPath)
-        let slim = SlimReport.parse("→ DRY RUN MODE\n\n  Google Chrome        576.3MB\n  Arc                  350.8MB\n\n2 apps, 927.1MB of Intel code")
-        #expect(slim.apps.map(\.name) == ["Google Chrome", "Arc"])
-        #expect(slim.bytes == 927_100_000)
-    }
-
     @Test func terminalText() {
         #expect(TerminalText.visible("⠋ Scanning\r\u{1B}[2K✓ Done") == "✓ Done")
         #expect(MoleSession.completeUTF8Length(Data("ab".utf8) + Data([0xE2, 0x9C])) == 2)
@@ -58,11 +48,6 @@ struct ParserTests {
         #expect(abs(area - 240_000) < 1)
     }
 
-    @Test func installerNames() {
-        #expect(InstallerScanner.isInstaller("Claude.dmg"))
-        #expect(InstallerScanner.isInstaller("BssPluginSetup.app.zip"))
-        #expect(!InstallerScanner.isInstaller("photos.zip"))
-    }
 }
 
 struct BehaviourTests {
@@ -84,14 +69,6 @@ struct BehaviourTests {
     @Test func scanStatusLine() {
         #expect(Scan<SectionReport>.describe("→ User app cache · 38 items, 1.41GB dry") == "User app cache")
         #expect(Scan<SectionReport>.describe("→ Arc Service Worker, would clean 40.1MB, 0 protected") == "Arc Service Worker")
-        #expect(Scan<PurgeReport>.describe("✓ [DRY RUN] ~/P/a/.expo, 4KB") == "~/P/a/.expo")
-    }
-
-    @Test func purgeNotes() {
-        let r = PurgeReport.parse("◎ Skipped 1 project scan root because scanning did not complete:\n  ~/P (status 124)\n✓ [DRY RUN] ~/P/a/node_modules, 1GB")
-        #expect(r.notes == ["Skipped 1 project scan root because scanning did not complete: ~/P"])
-        #expect(r.skippedRoots == ["~/P"])
-        #expect(r.artifacts.count == 1)
     }
 
     @Test func appSizeFromMole() throws {
@@ -122,7 +99,7 @@ struct BehaviourTests {
         #expect(String(decoding: data, as: UTF8.self).contains("Mole version"))
         try await Task.sleep(for: .milliseconds(100))
         #expect(seen.contains { $0.contains("Mole version") })
-        await #expect(throws: MoleError.self) { _ = try await Mole.capture(["purge", "--no-such-flag"]) }
+        await #expect(throws: MoleError.self) { _ = try await Mole.capture(["clean", "--no-such-flag"]) }
     }
 }
 
@@ -416,28 +393,5 @@ struct LeftoverTests {
         let preview = RunProgress.parse(lines: ["→ DRY RUN MODE, No app files or settings will be modified"] + listed
                                         + ["➤ Remove 2 apps, 90.5MB  Enter confirm, ESC cancel:", "Would remove 2 apps, would free 90.5MB: LinearMouse, Qalta"], live: "")
         #expect(preview.dryRun && preview.review.count == 3 && preview.freed == 90_500_000)
-    }
-
-    @Test func purgeKeepsResultsWhenSomeFoldersCouldNotBeChecked() {
-        // Mole exits 1 here, after a whole summary; the warnings come on stderr, after stdout.
-        let out = """
-            → [DRY RUN] ~/PROJECTS/app/node_modules, 1.20GB
-            → [DRY RUN] ~/PROJECTS/site/dist, 3.5MB
-            ======================================================================
-            Dry run incomplete - no changes made
-            Would free approximately: 1.20GB | Items: 2 | Free: 81.00GB
-            ======================================================================
-
-            ◎ Could not inspect ~/PROJECTS/a/dist; kept
-            ◎ Could not inspect ~/PROJECTS/b/dist; kept
-            ◎ Could not inspect ~/PROJECTS/c/dist; kept
-            ◎ Could not inspect ~/PROJECTS/d/dist; kept
-            """
-        let r = PurgeReport.parse(out)
-        #expect(r.complete && r.artifacts.count == 2)
-        #expect(r.uninspected == ["~/PROJECTS/a/dist", "~/PROJECTS/b/dist", "~/PROJECTS/c/dist", "~/PROJECTS/d/dist"])
-        #expect(r.notes.last?.hasSuffix("~/PROJECTS/c/dist and 1 more") == true)
-        // Cut off before the summary: not a whole result.
-        #expect(!PurgeReport.parse("→ [DRY RUN] ~/PROJECTS/app/node_modules, 1.20GB").complete)
     }
 }

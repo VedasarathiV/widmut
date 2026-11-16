@@ -17,7 +17,7 @@ struct WidmutApp: App {
                     let defaults = UserDefaults.standard
                     if let folder = defaults.string(forKey: "tour") { Tour.start(model, into: folder) }
                     if let file = defaults.string(forKey: "replayRun"), let text = try? String(contentsOfFile: file, encoding: .utf8) {
-                        model.replay(defaults.string(forKey: "replayTitle") ?? "Slimming apps", transcript: text,
+                        model.replay(defaults.string(forKey: "replayTitle") ?? "Cleaning caches", transcript: text,
                                      plan: Int64(defaults.string(forKey: "replayPlan") ?? ""))
                     }
                 }

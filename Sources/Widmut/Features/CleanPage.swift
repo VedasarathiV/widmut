@@ -71,7 +71,7 @@ struct CleanPage: View {
             // A window just reopened from the menu bar drops an alert shown in its first layout.
             Task {
                 try? await Task.sleep(for: .milliseconds(300))
-                if NSApp.widmutWindow?.isVisible == true, model.page == .clean, !scan.scanning,
+                if NSApp.widmutWindow?.isVisible == true, model.page == .cleanup, !scan.scanning,
                    (scan.report?.total ?? 0) > 0 { askToClean() }
             }
         }
@@ -156,7 +156,7 @@ struct OptimizePage: View {
                         Spacer(minLength: 12)
                         HStack(spacing: 10) {
                             ScanButton(scanning: scan.scanning, title: "Recheck", start: scan.start, stop: scan.cancel)
-                            Button("Optimize") {
+                            Button("Speed Up") {
                                 model.run("Optimizing", ["optimize"]) { scan.start() }
                             }
                             .buttonStyle(.pill).disabled(scan.scanning || scan.report == nil)
@@ -180,7 +180,7 @@ struct OptimizePage: View {
                 }
                 HStack(spacing: 8) {
                     Image(systemName: "eye")
-                    Text("Preview: these steps run when you press Optimize.")
+                    Text("Preview: these steps run when you press Speed Up.")
                 }
                 .font(.system(size: 12.5, weight: .medium)).foregroundStyle(.white.opacity(0.85))
                 .padding(.horizontal, 14).frame(height: 32)

@@ -1,22 +1,19 @@
 import SwiftUI
 
 enum Page: String, CaseIterable, Identifiable {
-    case overview, clean, uninstall, optimize, analyze, projects, installers, privacy, slim, history, settings
+    case overview, cleanup, uninstall, optimize, storage, privacy, activity, settings
 
     var id: String { rawValue }
 
     var title: String {
         switch self {
         case .overview: "Overview"
-        case .clean: "Clean"
-        case .uninstall: "Uninstall"
-        case .optimize: "Optimize"
-        case .analyze: "Disk Map"
-        case .projects: "Projects"
-        case .installers: "Installers"
-        case .privacy: "Privacy & AI"
-        case .slim: "Slim Apps"
-        case .history: "History"
+        case .cleanup: "Cleanup"
+        case .uninstall: "Uninstaller"
+        case .optimize: "Speed Up"
+        case .storage: "Storage"
+        case .privacy: "Privacy"
+        case .activity: "Activity"
         case .settings: "Settings"
         }
     }
@@ -24,49 +21,43 @@ enum Page: String, CaseIterable, Identifiable {
     var symbol: String {
         switch self {
         case .overview: "circle.hexagongrid"
-        case .clean: "sparkles"
+        case .cleanup: "sparkles"
         case .uninstall: "trash"
         case .optimize: "bolt"
-        case .analyze: "square.grid.3x3.square"
-        case .projects: "shippingbox"
-        case .installers: "opticaldiscdrive"
+        case .storage: "square.grid.3x3.square"
         case .privacy: "hand.raised"
-        case .slim: "scissors"
-        case .history: "clock.arrow.circlepath"
+        case .activity: "clock.arrow.circlepath"
         case .settings: "slider.horizontal.3"
         }
     }
 
     var glow: Glow {
         switch self {
-        case .overview, .history: .violet
-        case .clean, .slim: .magenta
-        case .uninstall, .installers, .privacy: .ember
+        case .overview, .activity: .violet
+        case .cleanup: .magenta
+        case .uninstall, .privacy: .ember
         case .optimize, .settings: .sage
-        case .analyze, .projects: .blue
+        case .storage: .blue
         }
     }
 
     var subtitle: String {
         switch self {
         case .overview: "Live health of this Mac"
-        case .clean: "Caches, logs and leftovers of removed apps"
+        case .cleanup: "Caches, logs and leftovers of removed apps"
         case .uninstall: "Remove apps with everything they left behind"
         case .optimize: "Refresh system caches and services"
-        case .analyze: "See what takes the space and clean it up"
-        case .projects: "Build folders of projects you are not touching"
-        case .installers: "Disk images and packages you no longer need"
+        case .storage: "See what takes the space and clean it up"
         case .privacy: "Apple Intelligence, telemetry, and the settings macOS hides"
-        case .slim: "Drop the Intel half of universal apps"
-        case .history: "Everything Widmut changed, newest first"
-        case .settings: "Protection rules, scan folders, Touch ID, deleted apps"
+        case .activity: "Everything Widmut changed, newest first"
+        case .settings: "Protection rules, Touch ID, deleted apps"
         }
     }
 
     var shortcut: KeyEquivalent {
-        let keys: [Page: Character] = [.overview: "1", .clean: "2", .uninstall: "3", .optimize: "4", .analyze: "5",
-                                       .projects: "6", .installers: "7", .privacy: "8", .slim: "9", .history: "0", .settings: ","]
-        return KeyEquivalent(keys[self] ?? "0")
+        let keys: [Page: Character] = [.overview: "1", .cleanup: "2", .uninstall: "3", .optimize: "4",
+                                       .storage: "5", .privacy: "6", .activity: "7", .settings: ","]
+        return KeyEquivalent(keys[self] ?? "1")
     }
 }
 
@@ -84,14 +75,8 @@ final class AppModel: ObservableObject {
 
     let clean = Scan(["clean", "--dry-run"], parse: SectionReport.parse)
     let optimize = Scan(["optimize", "--dry-run"], parse: SectionReport.parse)
-    /// Mole rewrites this file with the folder it is scanning; Widmut only reads it.
-    let purge = Scan(["purge", "--dry-run"],
-                     progressFile: FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".cache/mole/purge_scanning"),
-                     usableAfterFailure: { $0.complete }, parse: PurgeReport.parse)
-    let slim = Scan(["slim", "--dry-run"], parse: SlimReport.parse)
     let apps = AppCatalog()
     let diskMap = DiskMap()
-    let installers = InstallerStore()
     let leftovers = LeftoverStore()
     /// The privacy switches and their undo history, kept while the app runs.
     let privacy = PrivacyStore()
@@ -101,15 +86,11 @@ final class AppModel: ObservableObject {
     let status = StatusMonitor()
 
     init() {
-        clean.onBusyChange = { [weak self] in self?.mark(.clean, $0) }
+        clean.onBusyChange = { [weak self] in self?.mark(.cleanup, $0) }
         optimize.onBusyChange = { [weak self] in self?.mark(.optimize, $0) }
-        purge.onBusyChange = { [weak self] in self?.mark(.projects, $0) }
-        slim.onBusyChange = { [weak self] in self?.mark(.slim, $0) }
-        installers.onBusyChange = { [weak self] in self?.mark(.installers, $0) }
         leftovers.onBusyChange = { [weak self] in self?.mark(.uninstall, $0) }
-        diskMap.onBusyChange = { [weak self] in self?.mark(.analyze, $0) }
+        diskMap.onBusyChange = { [weak self] in self?.mark(.storage, $0) }
         Task {
-            await installers.load()
             await leftovers.load()
             await refreshStale()
         }
@@ -132,19 +113,17 @@ final class AppModel: ObservableObject {
 
     /// Last results come from the cache at once. In the background, one at a time so the Mac
     /// stays responsive, anything missing or older than a few hours is checked again: quick
-    /// scans first, the slow walks (Disk Map, project folders) last. Pages never re-scan on
-    /// their own; the Rescan buttons do.
+    /// scans first, the slow walk (Storage) last. Pages never re-scan on their own; the Rescan
+    /// buttons do.
     func refreshStale() async {
         guard !refreshing, !Self.reviewMode else { return }
         refreshing = true
         defer { refreshing = false }
         await leftovers.refreshIfAppsChanged()
         await optimize.refreshIfStale()
-        await slim.refreshIfStale()
         await apps.refreshIfStale()
         await clean.refreshIfStale()
         await diskMap.refreshIfStale()
-        await purge.refreshIfStale()
     }
 
     private func mark(_ page: Page, _ on: Bool) {

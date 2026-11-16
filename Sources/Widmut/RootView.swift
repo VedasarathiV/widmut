@@ -47,15 +47,12 @@ struct RootView: View {
     @ViewBuilder private var content: some View {
         switch model.page {
         case .overview: OverviewPage(monitor: model.status)
-        case .clean: CleanPage(scan: model.clean)
+        case .cleanup: CleanPage(scan: model.clean)
         case .uninstall: UninstallPage(catalog: model.apps, leftovers: model.leftovers)
         case .optimize: OptimizePage(scan: model.optimize)
-        case .analyze: AnalyzePage(map: model.diskMap)
-        case .projects: ProjectsPage(scan: model.purge)
-        case .installers: InstallersPage(store: model.installers)
+        case .storage: AnalyzePage(map: model.diskMap)
         case .privacy: PrivacyPage(store: model.privacy)
-        case .slim: SlimPage(scan: model.slim)
-        case .history: HistoryPage()
+        case .activity: HistoryPage()
         case .settings: SettingsPage()
         }
     }
@@ -75,11 +72,13 @@ struct PageHeader: View {
 struct Sidebar: View {
     @EnvironmentObject private var model: AppModel
     @Namespace private var selection
+    /// The bundle's version, so the sidebar never shows a number a release outgrew.
+    private static let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "dev"
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
             HStack(spacing: 10) {
-                WidmutMark().frame(width: 36, height: 36).padding(-4)
+                WidmutMark().frame(width: 48, height: 48).padding(-6)
                 Text("Widmut").font(.system(size: 17, weight: .semibold))
             }
             .padding(.leading, 10)
@@ -87,14 +86,14 @@ struct Sidebar: View {
             .padding(.bottom, 22)
 
             ForEach(Page.allCases) { page in
-                if page == .history { Spacer(minLength: 18) }
+                if page == .activity { Spacer(minLength: 18) }
                 SidebarItem(page: page, selected: model.page == page, busy: model.busy.contains(page),
                             namespace: selection) {
                     model.page = page
                 }
             }
             Spacer()
-            Text("Widmut v1.0.0 · Mac Cleaner")
+            Text("Widmut v\(Self.version) · Mac Cleaner")
                 .font(.system(size: 11)).foregroundStyle(Theme.tertiaryText)
                 .padding(.leading, 12).padding(.bottom, 18)
         }

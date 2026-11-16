@@ -53,7 +53,7 @@ cat > "$APP/Contents/Info.plist" <<PLIST
     <key>LSMinimumSystemVersion</key><string>26.0</string>
     <key>LSApplicationCategoryType</key><string>public.app-category.utilities</string>
     <key>NSHighResolutionCapable</key><true/>
-    <key>NSHumanReadableCopyright</key><string>GPL-3.0. Widmut Mac Cleaner.</string>
+    <key>NSHumanReadableCopyright</key><string>© DigiMartrix. GPL-3.0. Widmut Mac Cleaner — digimartrix.com</string>
     <key>SUFeedURL</key><string>https://github.com/VedasarathiV/widmut/releases/latest/download/appcast.xml</string>
     <key>SUPublicEDKey</key><string>QaDnpjb2kiIdqemydO9gyCCnyPQdQ2TuRqXxdx4cNjU=</string>
     <key>SUEnableAutomaticChecks</key><true/>

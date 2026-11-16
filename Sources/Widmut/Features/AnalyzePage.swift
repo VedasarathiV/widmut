@@ -171,7 +171,7 @@ final class DiskMap: ObservableObject {
     }
 }
 
-/// Which Disk Map items may be moved to the Trash. Only a real item directly inside the folder
+/// Which Storage items may be moved to the Trash. Only a real item directly inside the folder
 /// being mapped, inside the home folder, and never one of the folders macOS and apps rely on.
 enum TrashPolicy {
     /// Inside ~/Library only these hold disposable things (caches, logs, app data the user may

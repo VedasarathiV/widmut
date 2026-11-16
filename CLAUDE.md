@@ -25,7 +25,7 @@ folders or memories.
 - Agents never run a real Mole action while testing: no `clean`, `uninstall`, `purge`, `slim`,
   `optimize`, `installer` without `--dry-run`, no `touchid enable/disable`, `remove`, `update`.
 - In the running app, never press Clean now, Optimize, Uninstall, Remove selected, Move to Trash,
-  Slim apps, Touch ID Turn on/off or Remove…, and never confirm a Mole prompt.
+  Touch ID Turn on/off or Remove…, and never confirm a Mole prompt.
 - Never write the owner's Mole config and state (`~/.config/mole`, `~/.cache/mole`,
   `~/Library/Logs/mole`); tests use a temporary directory.
 - The Privacy page changes the owner's real macOS preferences. Never press Apply, Undo or Undo
@@ -36,8 +36,7 @@ folders or memories.
 ## Screenshots for reviews
 `build/Wildmutt.app/Contents/MacOS/Wildmutt -startPage <page> -snapshot <file.png> [-snapshotDelay 12]
 [-snapshotSize 1080x700]` draws the window offscreen and quits; it works while the screen is locked.
-Pages: overview, clean, uninstall, optimize, analyze, projects, installers, privacy, slim, history,
-settings.
+Pages: overview, cleanup, uninstall, optimize, storage, privacy, activity, settings.
 `swift test` must run outside the sandbox; after a sandboxed run, `rm -rf .build` first. Since the
 macOS 27.2 Command Line Tools the Testing macro plugin is not found by default: run
 `swift test -Xswiftc -plugin-path -Xswiftc /Library/Developer/CommandLineTools/usr/lib/swift/host/plugins/testing`.
@@ -47,8 +46,8 @@ Dark, premium, few large elements: squircle cards lit by one hue (rim or inner g
 numerals, dotted meters, capsule buttons, white circular icon buttons; smooth, purposeful motion that
 honours Reduce Motion. The palette is Wildmutt's: the alien's coat runs coral to rust, its fur is
 cream, and Omnitrix green marks what is done. The app icon is drawn by `scripts/make-icon.swift` from the owner's `Wildmutt.jpeg`
-(the checkerboard it was saved on is keyed out, composited into the squircle); the menu bar uses a
-vector version of his blind head — ears, gill slits, fangs — as a template image in `Tray.swift`. Reviews of UI, UX, visuals and motion are done by a Claude `"opus"` critic with
+(the checkerboard it was saved on is keyed out, composited into the squircle); the menu bar takes that same
+icon and cuts the squircle away in `Tray.swift`, so it shows him in colour without a tile. Reviews of UI, UX, visuals and motion are done by a Claude `"opus"` critic with
 screenshots of every page and the diff, never by Codex (no design taste); Codex only reviews
 engine/backend code.
 

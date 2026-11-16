@@ -1,12 +1,11 @@
 import ServiceManagement
 import SwiftUI
 
-/// A line-based Mole config file (`whitelist`, `purge_paths`): comments are kept as they are.
+/// A line-based Mole config file (`whitelist`): comments are kept as they are.
 struct ConfigList {
     let url: URL
 
     static let whitelist = ConfigList(url: home(".config/mole/whitelist"))
-    static let purgePaths = ConfigList(url: home(".config/mole/purge_paths"))
 
     /// "~", "~/", "$HOME", "/Users/me/" and the like all name the home folder.
     static func isHome(_ entry: String) -> Bool {
@@ -38,7 +37,6 @@ struct ConfigList {
 struct SettingsPage: View {
     @EnvironmentObject private var model: AppModel
     @ViewState private var whitelist: [String] = []
-    @ViewState private var purgePaths: [String] = []
     /// The last known state, so a return visit does not show a spinner while it is checked again.
     private static var knownTouchID: Bool?
     /// nil while checking.
@@ -49,18 +47,10 @@ struct SettingsPage: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
-            HStack(alignment: .top, spacing: 18) {
-                PathListCard(title: "Protected paths",
-                             caption: "Clean, Optimize and Slim never touch these. Wildcards like * work.",
-                             glow: .sage, entries: $whitelist) { ConfigList.whitelist.write($0) }
-                PathListCard(title: "Project scan folders",
-                             caption: "Where Projects looks for build folders.",
-                             warning: purgePaths.contains(where: ConfigList.isHome)
-                                ? "Your whole home folder is slow to scan and can time out. Project folders work best." : "",
-                             glow: .blue, entries: $purgePaths) { ConfigList.purgePaths.write($0) }
-            }
-            // Cards in a row share the height of the taller one's content, never a fixed height.
-            .fixedSize(horizontal: false, vertical: true)
+            PathListCard(title: "Protected paths",
+                         caption: "Cleanup and Speed Up never touch these. Wildcards like * work.",
+                         glow: .sage, entries: $whitelist) { ConfigList.whitelist.write($0) }
+                .fixedSize(horizontal: false, vertical: true)
 
             HStack(alignment: .top, spacing: 18) {
                 GlowCard(glow: .violet, style: .core) {
@@ -94,11 +84,16 @@ struct SettingsPage: View {
                         Text("Widmut is an open-source, high-performance native macOS system cleaner and privacy manager. Clean system caches, remove leftover app remnants, optimize performance, map disk usage, and manage Apple Intelligence models safely.").caption()
                         Text("Licensed under GPL-3.0. 100% Free and Private.").caption()
                         Spacer(minLength: 0)
-                        HStack {
+                        HStack(spacing: 16) {
                             Button("View Logs") {
                                 NSWorkspace.shared.open(ConfigList.home("Library/Logs/mole"))
                             }
                             .buttonStyle(.pillSecondary)
+                            Link("Developed by DigiMartrix", destination: URL(string: "https://digimartrix.com/")!)
+                                .font(.system(size: 12.5, weight: .medium))
+                                .foregroundStyle(Theme.accent)
+                                .tint(Theme.accent)
+                                .help("digimartrix.com")
                         }
                     }
                 }
@@ -134,7 +129,6 @@ struct SettingsPage: View {
         }
         .task {
             whitelist = ConfigList.whitelist.read()
-            purgePaths = ConfigList.purgePaths.read()
             await checkTouchID()
         }
     }

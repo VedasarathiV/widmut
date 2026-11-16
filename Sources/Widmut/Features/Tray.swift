@@ -22,8 +22,8 @@ struct TrayView: View {
             }
             .padding(.horizontal, 4)
 
-            Button { open(.analyze) } label: { diskCard(s) }
-                .buttonStyle(.plain).hoverLift().accessibilityHint("Opens Disk Map")
+            Button { open(.storage) } label: { diskCard(s) }
+                .buttonStyle(.plain).hoverLift().accessibilityHint("Opens Storage")
 
             HStack(spacing: 10) {
                 vital("CPU", s.map { String(format: "%.0f", $0.cpu?.usage ?? 0) }, unit: "%", fill: (s?.cpu?.usage ?? 0) / 100, glow: .violet)
@@ -40,11 +40,8 @@ struct TrayView: View {
 
             VStack(spacing: 2) {
                 TrayRow(title: "Caches and logs", value: scanValue(model.clean, \.total), busy: model.clean.scanning,
-                        clean: canClean ? { open(.clean); model.askCleanAt = Date() } : nil) { open(.clean) }
+                        clean: canClean ? { open(.cleanup); model.askCleanAt = Date() } : nil) { open(.cleanup) }
                 row("Leftovers of removed apps", value: leftoversValue, busy: leftovers.scanning, page: .uninstall)
-                row("Old installers", value: model.installers.files.map { $0.map(\.bytes).reduce(0, +).bytesText }
-                        ?? (model.installers.scanning ? "Looking…" : "Not checked"),
-                    busy: model.installers.scanning, page: .installers)
             }
             .padding(6)
             .background(RoundedRectangle(cornerRadius: 18, style: .continuous).fill(Theme.surface))
@@ -200,54 +197,122 @@ private struct TrayRow: View {
     }
 }
 
-/// Widmut's head, filled and drawn as a template so the menu bar tints it.
+/// The menu bar mark: the app icon's own art with the icon's dark squircle taken away, so the bar
+/// shows the same Widmut as the window and the Dock instead of the old blind head.
 enum TrayIcon {
     static let image: NSImage = {
-        let image = NSImage(size: NSSize(width: 18, height: 18), flipped: false) { _ in
-            // One filled head with ears reads at 18 px; the slits and mouth are cut out of it.
-            let head = NSBezierPath()
-            head.move(to: NSPoint(x: 9, y: 2.2))
-            head.curve(to: NSPoint(x: 3.0, y: 9.0), controlPoint1: NSPoint(x: 5.8, y: 2.4), controlPoint2: NSPoint(x: 3.4, y: 4.6))
-            head.curve(to: NSPoint(x: 9, y: 14.6), controlPoint1: NSPoint(x: 2.8, y: 12.4), controlPoint2: NSPoint(x: 5.4, y: 14.6))
-            head.curve(to: NSPoint(x: 15.0, y: 9.0), controlPoint1: NSPoint(x: 12.6, y: 14.6), controlPoint2: NSPoint(x: 15.2, y: 12.4))
-            head.curve(to: NSPoint(x: 9, y: 2.2), controlPoint1: NSPoint(x: 14.6, y: 4.6), controlPoint2: NSPoint(x: 12.2, y: 2.4))
-            head.close()
-            // Ears, swept back like the alien's.
-            for (base, tip) in [(NSPoint(x: 4.2, y: 12.6), NSPoint(x: 2.5, y: 16.6)),
-                                (NSPoint(x: 13.8, y: 12.6), NSPoint(x: 15.5, y: 16.6))] {
-                let ear = NSBezierPath()
-                ear.move(to: NSPoint(x: base.x - 1.7, y: base.y))
-                ear.line(to: tip)
-                ear.line(to: NSPoint(x: base.x + 1.8, y: base.y + 0.8))
-                ear.close()
-                ear.fill()
-            }
-            head.fill()
-            guard let ctx = NSGraphicsContext.current?.cgContext else { return true }
-            ctx.setBlendMode(.clear)
-            NSColor.black.setStroke()
-            for i in 0..<3 {
-                let x = 5.6 + CGFloat(i) * 1.5
-                for sx in [x, 18 - x] {
-                    let slit = NSBezierPath()
-                    slit.move(to: NSPoint(x: sx, y: 6.0))
-                    slit.line(to: NSPoint(x: sx + (sx < 9 ? 0.7 : -0.7), y: 9.4))
-                    slit.lineWidth = 1.15
-                    slit.lineCapStyle = .round
-                    slit.stroke()
-                }
-            }
-            let mouth = NSBezierPath()
-            mouth.move(to: NSPoint(x: 6.4, y: 4.6))
-            mouth.curve(to: NSPoint(x: 11.6, y: 4.6), controlPoint1: NSPoint(x: 7.8, y: 3.4), controlPoint2: NSPoint(x: 10.2, y: 3.4))
-            mouth.lineWidth = 1.2
-            mouth.lineCapStyle = .round
-            mouth.stroke()
-            ctx.setBlendMode(.normal)
-            return true
-        }
-        image.isTemplate = true
-        image.accessibilityDescription = "Widmut"
-        return image
+        // Without a cut (never in the bundled app) the icon itself still shows, tile and all.
+        guard let icon = NSApp.applicationIconImage else { return NSImage(size: NSSize(width: 18, height: 18)) }
+        guard let mark = cutout(from: icon) else { return icon }
+        mark.accessibilityDescription = "Widmut"
+        return mark
     }()
+
+    /// Copies the icon small, drops the drop shadow and the squircle's antialiased rim, then grows
+    /// the icon's dark warm brown background away from that rim. The black line art and the orange
+    /// coat stop the fill, so Widmut's own shading survives; what is left is trimmed to him and
+    /// sized for the bar.
+    private static func cutout(from icon: NSImage) -> NSImage? {
+        guard let full = icon.cgImage(forProposedRect: nil, context: nil, hints: nil) else { return nil }
+        // 160 px is far more than the bar needs, and keeps the fill instant.
+        let scale = min(160 / CGFloat(full.width), 160 / CGFloat(full.height))
+        let width = Int(CGFloat(full.width) * scale), height = Int(CGFloat(full.height) * scale)
+        guard width > 8, height > 8 else { return nil }
+
+        let space = CGColorSpaceCreateDeviceRGB()
+        let count = width * height
+        let pixels = UnsafeMutablePointer<UInt8>.allocate(capacity: count * 4)
+        pixels.initialize(repeating: 0, count: count * 4)
+        defer { pixels.deallocate() }
+        guard let canvas = CGContext(data: pixels, width: width, height: height, bitsPerComponent: 8,
+                                     bytesPerRow: width * 4, space: space,
+                                     bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else { return nil }
+        canvas.interpolationQuality = .high
+        canvas.draw(full, in: CGRect(x: 0, y: 0, width: width, height: height))
+        // The icon as it came, kept for its colours; `pixels` is the copy being cut.
+        let art = Array(UnsafeBufferPointer(start: pixels, count: count * 4))
+
+        func alpha(_ i: Int) -> Int { Int(art[i * 4 + 3]) }
+        func colour(_ i: Int) -> (r: CGFloat, g: CGFloat, b: CGFloat) {
+            let a = CGFloat(max(alpha(i), 1))
+            return (CGFloat(art[i * 4]) / a, CGFloat(art[i * 4 + 1]) / a, CGFloat(art[i * 4 + 2]) / a)
+        }
+        func clear(_ i: Int) {
+            pixels[i * 4] = 0
+            pixels[i * 4 + 1] = 0
+            pixels[i * 4 + 2] = 0
+            pixels[i * 4 + 3] = 0
+        }
+        // The background is a dark, warm brown gradient; black line art and the bright coat are not.
+        func isBackground(_ i: Int) -> Bool {
+            guard alpha(i) > 50 else { return false }
+            let c = colour(i)
+            return c.r > 0.02 && c.r < 0.62 && c.g < c.r * 0.78 && c.b < c.r * 0.38
+        }
+        // A fill that only continues colours close to the one it came from follows the gradient to
+        // the art's edge and stops there, instead of jumping across it.
+        func continues(_ i: Int, _ from: Int) -> Bool {
+            let a = colour(i), b = colour(from)
+            return abs(a.r - b.r) < 0.07 && abs(a.g - b.g) < 0.05 && abs(a.b - b.b) < 0.04
+                && abs(alpha(i) - alpha(from)) < 40
+        }
+
+        // The shadow and the squircle's rim are the only translucent pixels around the art:
+        // clearing them leaves the background itself to fill.
+        for i in 0..<count where alpha(i) < 250 { clear(i) }
+
+        var seen = [Bool](repeating: false, count: count)
+        var stack: [Int] = []
+        for y in 0..<height {
+            for x in 0..<width {
+                let i = y * width + x
+                guard pixels[i * 4 + 3] > 50, isBackground(i) else { continue }
+                let onRim = [(1, 0), (-1, 0), (0, 1), (0, -1)].contains { dx, dy in
+                    let nx = x + dx, ny = y + dy
+                    return nx < 0 || ny < 0 || nx >= width || ny >= height || pixels[(ny * width + nx) * 4 + 3] <= 50
+                }
+                if onRim { seen[i] = true; stack.append(i) }
+            }
+        }
+        while let i = stack.popLast() {
+            clear(i)
+            let x = i % width, y = i / width
+            for (dx, dy) in [(1, 0), (-1, 0), (0, 1), (0, -1)] {
+                let nx = x + dx, ny = y + dy
+                guard nx >= 0, ny >= 0, nx < width, ny < height else { continue }
+                let n = ny * width + nx
+                if !seen[n], isBackground(n), continues(n, i) { seen[n] = true; stack.append(n) }
+            }
+        }
+
+        var minX = width, minY = height, maxX = -1, maxY = -1
+        for i in 0..<count where pixels[i * 4 + 3] > 12 {
+            minX = min(minX, i % width)
+            maxX = max(maxX, i % width)
+            minY = min(minY, i / width)
+            maxY = max(maxY, i / width)
+        }
+        guard maxX >= minX, maxY >= minY else { return nil }
+        let cutW = maxX - minX + 1, cutH = maxY - minY + 1
+        var cut = [UInt8](repeating: 0, count: cutW * cutH * 4)
+        for y in 0..<cutH {
+            for x in 0..<cutW {
+                let from = ((y + minY) * width + (x + minX)) * 4, to = (y * cutW + x) * 4
+                cut[to] = pixels[from]
+                cut[to + 1] = pixels[from + 1]
+                cut[to + 2] = pixels[from + 2]
+                cut[to + 3] = pixels[from + 3]
+            }
+        }
+        guard let provider = CGDataProvider(data: Data(cut) as CFData),
+              let image = CGImage(width: cutW, height: cutH, bitsPerComponent: 8, bitsPerPixel: 32,
+                                  bytesPerRow: cutW * 4, space: space,
+                                  bitmapInfo: CGBitmapInfo(rawValue: CGImageAlphaInfo.premultipliedLast.rawValue),
+                                  provider: provider, decode: nil, shouldInterpolate: true,
+                                  intent: .defaultIntent) else { return nil }
+        // The bar's own height, the width following the art so he is never squashed.
+        let barHeight: CGFloat = 18
+        return NSImage(cgImage: image, size: NSSize(width: barHeight * CGFloat(cutW) / CGFloat(cutH),
+                                                    height: barHeight))
+    }
 }

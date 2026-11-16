@@ -108,12 +108,9 @@ struct OverviewPage: View {
                 processesCard(s).frame(maxWidth: .infinity)
                 VStack(spacing: 12) {
                     ScanQuickAction(title: "Caches and logs", scan: model.clean, glow: .magenta, bytes: \.total, liveBytes: \.bytes) {
-                        model.page = .clean
+                        model.page = .cleanup
                     }
-                    ScanQuickAction(title: "Project build folders", scan: model.purge, glow: .blue, bytes: \.bytes) {
-                        model.page = .projects
-                    }
-                    InstallersQuickAction(store: model.installers) { model.page = .installers }
+                    LeftoversQuickAction(store: model.leftovers) { model.page = .uninstall }
                     AIQuickAction { model.page = .privacy }
                 }
                 .frame(width: 330)
@@ -335,16 +332,16 @@ struct ScanQuickAction<Report>: View {
     }
 }
 
-struct InstallersQuickAction: View {
-    @ObservedObject var store: InstallerStore
+struct LeftoversQuickAction: View {
+    @ObservedObject var store: LeftoverStore
     let action: () -> Void
 
     var body: some View {
-        let files = store.files ?? []
-        QuickAction(title: "Old installers",
-                    value: store.files == nil ? "Looking…" : files.map(\.bytes).reduce(0, +).bytesText,
-                    detail: store.files == nil ? "" : "\(files.count) file\(files.count == 1 ? "" : "s") in Downloads and more",
-                    busy: store.scanning, glow: .ember, action: action)
+        let all = store.leftovers ?? []
+        return QuickAction(title: "Leftovers of removed apps",
+                           value: store.leftovers == nil ? "Looking…" : (all.isEmpty ? "None" : all.map(\.bytes).reduce(0, +).bytesText),
+                           detail: store.leftovers == nil ? "" : "\(all.count) bundle\(all.count == 1 ? "" : "s") left behind",
+                           busy: store.scanning, glow: .ember, action: action)
     }
 }
 
@@ -355,7 +352,7 @@ struct AIQuickAction: View {
     var body: some View {
         QuickAction(title: "Apple Intelligence Models",
                     value: bytes.map { $0 == 0 ? "None" : $0.bytesText } ?? "Checking…",
-                    detail: "Purge & block in Privacy & AI",
+                    detail: "Purge & block in Privacy",
                     busy: bytes == nil, glow: .ember, action: action)
             .task {
                 if bytes == nil {
